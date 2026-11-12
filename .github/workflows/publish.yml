@@ -1,0 +1,96 @@
+name: Publish to Chrome Web Store
+
+# Runs when a GitHub release is published. The release tag must match the
+# manifest version (v1.2.0 or 1.2.0 for "version": "1.2.0"), because the store
+# rejects an upload whose version isn't higher than the live one.
+#
+# No long-lived key: GitHub's OIDC token is exchanged with Google (Workload
+# Identity Federation) for a short-lived access token. Google only accepts tokens
+# from this repo's chrome-web-store environment, which only v* tags can use.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: chrome-web-store
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
+      EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
+      API: https://chromewebstore.googleapis.com
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check tag matches manifest version
+        run: |
+          manifest_version=$(jq -r .version manifest.json)
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$tag" != "$manifest_version" ]; then
+            echo "::error::Ref $GITHUB_REF_NAME does not match manifest version $manifest_version"
+            exit 1
+          fi
+
+      - name: Build zip
+        run: zip -r extension.zip manifest.json hide.css hide.js icons
+
+      - name: Get access token
+        id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+          access_token_lifetime: 600s
+          create_credentials_file: false
+          export_environment_variables: false
+
+      - name: Upload
+        env:
+          TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          response=$(curl -sS -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -T extension.zip \
+            "$API/upload/v2/publishers/$PUBLISHER_ID/items/$EXTENSION_ID:upload")
+          echo "$response"
+          state=$(echo "$response" | jq -r '.uploadState // empty')
+
+          # Large uploads finish asynchronously; poll until they settle.
+          for _ in $(seq 1 20); do
+            [ "$state" = "IN_PROGRESS" ] || break
+            sleep 6
+            state=$(curl -sS -H "Authorization: Bearer $TOKEN" \
+              "$API/v2/publishers/$PUBLISHER_ID/items/$EXTENSION_ID:fetchStatus" \
+              | jq -r '.lastAsyncUploadState // empty')
+            echo "upload state: $state"
+          done
+
+          if [ "$state" != "SUCCEEDED" ]; then
+            echo "::error::Upload did not succeed (state: ${state:-unknown})"
+            exit 1
+          fi
+
+      - name: Submit for review and publish
+        env:
+          TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          response=$(curl -sS -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Length: 0" \
+            "$API/v2/publishers/$PUBLISHER_ID/items/$EXTENSION_ID:publish")
+          echo "$response"
+          if echo "$response" | jq -e '.error' > /dev/null; then
+            echo "::error::Publish request failed"
+            exit 1
+          fi

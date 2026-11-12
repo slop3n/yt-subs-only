@@ -1,0 +1,30 @@
+/*
+ * YouTube is a single-page app and keeps other pages' <ytd-browse> elements
+ * alive in the DOM, so every rule is scoped to the subscriptions one.
+ *
+ * The chronological uploads are plain ytd-rich-item-renderer cards in the grid;
+ * everything that sits in a section/shelf (Shorts, "Most relevant") is extra.
+ */
+ytd-browse[page-subtype="subscriptions"] ytd-rich-section-renderer,
+ytd-browse[page-subtype="subscriptions"] ytd-rich-shelf-renderer,
+ytd-browse[page-subtype="subscriptions"] ytd-reel-shelf-renderer,
+ytd-browse[page-subtype="subscriptions"] ytd-rich-item-renderer:has(a[href^="/shorts/"]),
+ytd-browse[page-subtype="subscriptions"] ytd-rich-item-renderer:has(ytm-shorts-lockup-view-model),
+ytd-browse[page-subtype="subscriptions"] ytd-rich-item-renderer:has(ytd-reel-item-renderer),
+html.yt-subs-only ytd-browse[page-subtype="subscriptions"] .yt-subs-only-hidden {
+  display: none !important;
+}
+
+/*
+ * Five videos per row. YouTube sets this variable inline from the window width;
+ * a stylesheet !important beats a non-important inline value.
+ */
+ytd-browse[page-subtype="subscriptions"] ytd-rich-grid-renderer {
+  --ytd-rich-grid-items-per-row: 5 !important;
+}
+
+/* Older layout wraps cards in fixed-size rows; flatten them so the grid reflows. */
+ytd-browse[page-subtype="subscriptions"] ytd-rich-grid-row,
+ytd-browse[page-subtype="subscriptions"] ytd-rich-grid-row > #contents {
+  display: contents !important;
+}
