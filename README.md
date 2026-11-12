@@ -32,28 +32,3 @@ without reloading, so the script has to be present before you reach the subscrip
 feed.
 
 To change the number of videos per row, edit the `5` in `hide.css`.
-
-## Releasing
-
-Publishing a GitHub release runs `.github/workflows/publish.yml`, which zips the
-extension, uploads it to the Chrome Web Store and submits it for review.
-
-1. Bump `"version"` in `manifest.json` and push.
-2. Publish a GitHub release tagged `v<that version>` (e.g. `v1.1.0`). The workflow fails
-   if the tag and the manifest version differ.
-
-There is no stored key. The job runs in the `chrome-web-store` environment, which only
-`v*` tags may use, and trades GitHub's OIDC token for a 10-minute Google access token
-through Workload Identity Federation. Google only accepts tokens from that environment
-of this repo.
-
-Variables on the `chrome-web-store` environment:
-
-| Name | Value |
-|---|---|
-| `CWS_PUBLISHER_ID` | Publisher ID from the Developer Dashboard settings |
-| `CWS_EXTENSION_ID` | The extension's ID from the Developer Dashboard |
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | `projects/<number>/locations/global/workloadIdentityPools/github/providers/github` |
-| `GCP_SERVICE_ACCOUNT` | Email of the service account linked to the Web Store publisher |
-
-Actions are pinned to commit SHAs; Dependabot keeps them current.
