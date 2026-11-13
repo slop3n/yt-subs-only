@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "YouTube Subscriptions Only",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "No Shorts, no \"Most relevant\" shelf: your YouTube subscriptions feed as new uploads only, newest first, 5 per row. Collects no data.",
   "homepage_url": "https://github.com/slop3n/yt-subs-only",
   "icons": {
