@@ -10,6 +10,10 @@ follow, newest first.
 
 The rest of YouTube is left alone, and the extension collects no data.
 
+## Install
+
+Get it from the [Chrome Web Store](https://chromewebstore.google.com/detail/hcokmffldjeocmpjoplbnichgidihknl).
+
 ## Install from source
 
 1. Clone this repo.
